@@ -12,6 +12,7 @@ import (
 	"log/slog"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/avast/retry-go/v4"
 	"github.com/lmittmann/tint"
 )
 
@@ -64,9 +65,31 @@ func link(wg *sync.WaitGroup) (context.Context, <-chan Link) {
 				return
 			}
 
-			res, err := c.Do(req.WithContext(ctx))
-			if err != nil {
-				logger.Error("problem", "from", "link", "type", "Do", "err", err)
+			var res *http.Response
+
+			configs := []retry.Option{
+				retry.Attempts(uint(3)),
+				retry.OnRetry(func(n uint, err error) {
+					logger.Error("problem", "from", "link", "type", "Do", "err", err, "retry count", n)
+				}),
+				retry.Delay(time.Second),
+			}
+
+			retry.Do(
+				func() error {
+					response, err := c.Do(req.WithContext(ctx))
+					res = response
+
+					if err != nil {
+						logger.Error("problem", "from", "link", "type", "Do", "err", err)
+					}
+
+					return err
+				},
+				configs...,
+			)
+
+			if res == nil {
 				cancel()
 				return
 			}
