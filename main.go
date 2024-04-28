@@ -65,8 +65,8 @@ func link(wg *sync.WaitGroup) (context.Context, <-chan Link) {
 				return
 			}
 
+			// request시 retry 적용
 			var res *http.Response
-
 			configs := []retry.Option{
 				retry.Attempts(uint(3)),
 				retry.OnRetry(func(n uint, err error) {
