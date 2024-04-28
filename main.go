@@ -70,7 +70,7 @@ func link(wg *sync.WaitGroup) (context.Context, <-chan Link) {
 			configs := []retry.Option{
 				retry.Attempts(uint(3)),
 				retry.OnRetry(func(n uint, err error) {
-					logger.Error("problem", "from", "link", "type", "Do", "err", err, "retry count", n)
+					logger.Warn("problem", "from", "link", "type", "Do", "err", err, "try count", n+1)
 				}),
 				retry.Delay(time.Second),
 			}
@@ -80,16 +80,13 @@ func link(wg *sync.WaitGroup) (context.Context, <-chan Link) {
 					response, err := c.Do(req.WithContext(ctx))
 					res = response
 
-					if err != nil {
-						logger.Error("problem", "from", "link", "type", "Do", "err", err)
-					}
-
 					return err
 				},
 				configs...,
 			)
 
 			if res == nil {
+				logger.Error("problem", "from", "link", "type", "Do", "err", err, "try count", "max")
 				cancel()
 				return
 			}
